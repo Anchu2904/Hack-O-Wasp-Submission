@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+pitch/
+
+# SUMO simulation output
+sumo/output/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
