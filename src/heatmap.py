@@ -1,150 +1,262 @@
 """
-heatmap.py
-Generates neon-styled Folium heatmaps from GPS probe DataFrames.
+src/heatmap.py
+--------------
+Folium heatmap builder for Jaam Ctrl.
 
-Coordinate mapping:
-  SUMO x ∈ [-200, 1000]  →  longitude  ∈ [77.10, 77.12] (Bangalore-ish)
-  SUMO y ∈ [-200,  200]  →  latitude   ∈ [12.97, 12.98]
+Exports required by app.py:
+  heatmap_to_html(gps_df, title, zoom)          -> str (HTML)
+  combined_heatmap_to_html(mode_dfs, zoom)      -> str (HTML)
+  per_junction_density(gps_df)                  -> dict[str, float]
+  flow_balance_score(gps_df)                    -> float
+  delay_reduction_pct(gps_df_a, gps_df_b)      -> float
+  JUNCTION_NAMES                                -> dict[str, str]
+
+GPS DataFrame schema (produced by run_simulation.py):
+  lat       float   WGS-84 latitude
+  lon       float   WGS-84 longitude
+  speed_kmph float  vehicle speed
+  weight    float   1 - speed/max_speed  (high = congested)
+  junction  str     nearest junction id ("J0" / "J1" / "J2")
 """
 
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
 import folium
 from folium.plugins import HeatMap
-import pandas as pd
-import numpy as np
 
-# ── Coordinate mapping ────────────────────────────────────────────────────────
-# Map SUMO metres to approximate lat/lon (Bangalore area)
-SUMO_X_MIN, SUMO_X_MAX = -200.0, 1000.0
-SUMO_Y_MIN, SUMO_Y_MAX = -200.0,  200.0
-LAT_MIN, LAT_MAX = 12.970, 12.980
-LON_MIN, LON_MAX = 77.100, 77.120
-
-# Junction lat/lon (for markers)
-JUNCTION_LATLON = {
-    "J0": (12.975, 77.1040),
-    "J1": (12.975, 77.1080),
-    "J2": (12.975, 77.1120),
+# ---------------------------------------------------------------------------
+# Real-world anchor coordinates — Connaught Place, New Delhi
+# Verified against OpenStreetMap / Google Maps
+# ---------------------------------------------------------------------------
+JUNCTION_COORDS: dict[str, tuple[float, float]] = {
+    "J0": (28.6315, 77.2167),   # Tolstoy Marg / Janpath core
+    "J1": (28.6328, 77.2195),   # Barakhamba Rd × KG Marg
+    "J2": (28.6287, 77.2140),   # Patel Chowk
 }
 
-HEAT_GRADIENT = {
-    0.0:  "#0A0F1E",   # dark background
-    0.25: "#00E5FF",   # cyan
-    0.5:  "#7C4DFF",   # violet
-    0.75: "#FF2FD6",   # magenta
-    1.0:  "#FF0000",   # red (hotspot)
+JUNCTION_NAMES: dict[str, str] = {
+    "J0": "Tolstoy Marg",
+    "J1": "CC Inner Ring (KG Marg)",
+    "J2": "Patel Chowk",
+}
+
+# Corridor centre for map initialisation
+_CP_CENTER = [28.6310, 77.2168]
+
+# Max speed used for weight normalisation
+_MAX_SPEED = 50.0
+
+# Radius of influence for density assignment (degrees, ≈ 300 m)
+_JUNCTION_RADIUS = 0.003
+
+# ---------------------------------------------------------------------------
+# Colour gradients per mode
+# ---------------------------------------------------------------------------
+_GRADIENTS = {
+    "fixed": {
+        0.2: "#1a0033",
+        0.5: "#7C4DFF",
+        0.8: "#FF2FD6",
+        1.0: "#FF4444",
+    },
+    "adaptive": {
+        0.2: "#001a33",
+        0.5: "#0077FF",
+        0.8: "#00E5FF",
+        1.0: "#00F5D4",
+    },
+    "rl": {
+        0.2: "#1a0033",
+        0.5: "#FF2FD6",
+        0.8: "#FF9900",
+        1.0: "#FFFF00",
+    },
+    "default": {
+        0.2: "#001a33",
+        0.5: "#7C4DFF",
+        0.8: "#00E5FF",
+        1.0: "#FF2FD6",
+    },
 }
 
 
-def _sumo_to_latlon(x: float, y: float) -> tuple[float, float]:
-    lat = LAT_MIN + (y - SUMO_Y_MIN) / (SUMO_Y_MAX - SUMO_Y_MIN) * (LAT_MAX - LAT_MIN)
-    lon = LON_MIN + (x - SUMO_X_MIN) / (SUMO_X_MAX - SUMO_X_MIN) * (LON_MAX - LON_MIN)
-    return lat, lon
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
-
-def _weight(speed: float, max_speed: float = 14.0) -> float:
-    """Heatmap intensity: slow vehicles = high weight (congestion)."""
-    return max(0.1, 1.0 - speed / max_speed)
-
-
-def build_heatmap(
-    gps_df: pd.DataFrame,
-    title: str = "Traffic Heatmap",
-    show_junctions: bool = True,
-) -> folium.Map:
-    """
-    Build and return a styled Folium heatmap from GPS probe data.
-
-    Parameters
-    ----------
-    gps_df  : DataFrame with columns x, y, speed
-    title   : map title (shown as tile layer name)
-    show_junctions : whether to add junction markers
-    """
-    center_lat = (LAT_MIN + LAT_MAX) / 2
-    center_lon = (LON_MIN + LON_MAX) / 2
-
-    m = folium.Map(
-        location=[center_lat, center_lon],
-        zoom_start=16,
+def _base_map(zoom: int = 15) -> folium.Map:
+    """Return a dark CartoDB map centred on Connaught Place."""
+    return folium.Map(
+        location=_CP_CENTER,
+        zoom_start=zoom,
         tiles="CartoDB dark_matter",
-        control_scale=True,
+        prefer_canvas=True,
     )
 
+
+def _add_junction_markers(m: folium.Map) -> None:
+    """Draw labelled circle markers at each junction's real coordinates."""
+    for jid, (lat, lon) in JUNCTION_COORDS.items():
+        name = JUNCTION_NAMES[jid]
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=10,
+            color="#00E5FF",
+            fill=True,
+            fill_color="#7C4DFF",
+            fill_opacity=0.85,
+            weight=2,
+            tooltip=folium.Tooltip(f"{jid} | {name}", sticky=True),
+            popup=folium.Popup(
+                f"<b style='color:#00E5FF'>{jid}</b><br>{name}",
+                max_width=200,
+            ),
+        ).add_to(m)
+
+
+def _heat_layer(
+    gps_df: pd.DataFrame,
+    name: str,
+    gradient: dict,
+) -> HeatMap:
+    """Build a HeatMap layer from a GPS DataFrame."""
     if gps_df.empty:
-        return m
-
-    # Build heat data: [[lat, lon, weight], ...]
-    heat_data = []
-    for _, row in gps_df.iterrows():
-        lat, lon = _sumo_to_latlon(row["x"], row["y"])
-        w = _weight(row.get("speed", 5.0))
-        heat_data.append([lat, lon, w])
-
-    HeatMap(
-        heat_data,
-        name=title,
-        min_opacity=0.3,
+        data = []
+    else:
+        data = gps_df[["lat", "lon", "weight"]].dropna().values.tolist()
+    return HeatMap(
+        data,
+        name=name,
+        min_opacity=0.35,
         max_zoom=18,
         radius=18,
-        blur=15,
-        gradient=HEAT_GRADIENT,
-    ).add_to(m)
+        blur=22,
+        gradient=gradient,
+    )
 
-    if show_junctions:
-        for jid, (jlat, jlon) in JUNCTION_LATLON.items():
-            folium.CircleMarker(
-                location=[jlat, jlon],
-                radius=10,
-                color="#00E5FF",
-                fill=True,
-                fill_color="#00E5FF",
-                fill_opacity=0.8,
-                popup=folium.Popup(
-                    f"<b style='color:#00E5FF'>{jid}</b>",
-                    max_width=120,
-                ),
-                tooltip=jid,
-            ).add_to(m)
 
-    # Corridor road line
-    road_coords = [
-        _sumo_to_latlon(-200, 0),
-        _sumo_to_latlon(1000, 0),
-    ]
-    folium.PolyLine(
-        road_coords,
-        color="#00E5FF",
-        weight=3,
-        opacity=0.5,
-        tooltip="Main arterial",
-    ).add_to(m)
-
-    folium.LayerControl().add_to(m)
-    return m
-
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def heatmap_to_html(
     gps_df: pd.DataFrame,
     title: str = "Traffic Heatmap",
+    zoom: int = 15,
 ) -> str:
-    """Return heatmap as an HTML string for embedding in Streamlit."""
-    m = build_heatmap(gps_df, title)
+    """
+    Build a single-mode heatmap and return it as an HTML string.
+
+    Parameters
+    ----------
+    gps_df : DataFrame with columns lat, lon, weight (and optionally speed_kmph)
+    title  : shown in the layer control
+    zoom   : initial map zoom level
+    """
+    m = _base_map(zoom)
+    _heat_layer(gps_df, title, _GRADIENTS["default"]).add_to(m)
+    _add_junction_markers(m)
+    folium.LayerControl(position="topright", collapsed=False).add_to(m)
+    return m._repr_html_()
+
+
+def combined_heatmap_to_html(
+    mode_dfs: dict[str, pd.DataFrame],
+    zoom: int = 15,
+) -> str:
+    """
+    Build a multi-layer heatmap (one layer per simulation mode).
+
+    Parameters
+    ----------
+    mode_dfs : {"fixed": df, "adaptive": df, "rl": df}  (any subset is fine)
+    zoom     : initial map zoom level
+    """
+    m = _base_map(zoom)
+
+    layer_labels = {
+        "fixed":    "Fixed-Time (baseline)",
+        "adaptive": "Rule-Based Adaptive",
+        "rl":       "PPO RL Agent",
+    }
+
+    for mode_key, gps_df in mode_dfs.items():
+        if gps_df is None or gps_df.empty:
+            continue
+        gradient = _GRADIENTS.get(mode_key, _GRADIENTS["default"])
+        label    = layer_labels.get(mode_key, mode_key.capitalize())
+        _heat_layer(gps_df, label, gradient).add_to(m)
+
+    _add_junction_markers(m)
+    folium.LayerControl(position="topright", collapsed=False).add_to(m)
     return m._repr_html_()
 
 
 def per_junction_density(gps_df: pd.DataFrame) -> dict[str, float]:
     """
-    Returns average congestion score (1 - normalised speed) per junction.
-    Used for dashboard KPI cards.
+    Return average congestion weight for points near each junction.
+
+    Returns
+    -------
+    {"J0": float, "J1": float, "J2": float}
+    A value of 0.0 means no probe points near that junction.
     """
+    result: dict[str, float] = {jid: 0.0 for jid in JUNCTION_COORDS}
     if gps_df.empty:
-        return {"J0": 0.0, "J1": 0.0, "J2": 0.0}
-    result = {}
-    for jid in ["J0", "J1", "J2"]:
-        subset = gps_df[gps_df["junction_proximity"] == jid]
-        if subset.empty:
-            result[jid] = 0.0
-        else:
-            avg_speed = subset["speed"].mean()
-            result[jid] = round(max(0, 1 - avg_speed / 14.0), 3)
+        return result
+
+    # If the DataFrame already has a junction column use it directly
+    if "junction" in gps_df.columns:
+        for jid in JUNCTION_COORDS:
+            sub = gps_df[gps_df["junction"] == jid]
+            if not sub.empty:
+                result[jid] = float(sub["weight"].mean())
+        return result
+
+    # Otherwise assign by proximity
+    lats = gps_df["lat"].values
+    lons = gps_df["lon"].values
+    wts  = gps_df["weight"].values
+
+    for jid, (jlat, jlon) in JUNCTION_COORDS.items():
+        dist = np.sqrt((lats - jlat) ** 2 + (lons - jlon) ** 2)
+        mask = dist < _JUNCTION_RADIUS
+        if mask.any():
+            result[jid] = float(wts[mask].mean())
+
     return result
+
+
+def flow_balance_score(gps_df: pd.DataFrame) -> float:
+    """
+    Measure how evenly congestion is distributed across junctions.
+
+    Returns std(density) / (mean(density) + 1e-6).
+    Lower = more even = better.
+    """
+    dens = per_junction_density(gps_df)
+    vals = np.array(list(dens.values()), dtype=float)
+    if vals.mean() < 1e-9:
+        return 0.0
+    return float(vals.std() / (vals.mean() + 1e-6))
+
+
+def delay_reduction_pct(
+    gps_df_a: pd.DataFrame,
+    gps_df_b: pd.DataFrame,
+) -> float:
+    """
+    Estimate congestion reduction from mode A to mode B.
+
+    Uses mean(weight) as a proxy for delay.
+    Returns percentage reduction (positive = B is better).
+    """
+    if gps_df_a.empty or gps_df_b.empty:
+        return 0.0
+    w_a = gps_df_a["weight"].mean()
+    w_b = gps_df_b["weight"].mean()
+    if w_a < 1e-9:
+        return 0.0
+    return float((w_a - w_b) / w_a * 100.0)

@@ -15,19 +15,19 @@ All calls use traci to read/set phase durations.
 import traci
 
 # ── Constants ────────────────────────────────────────────────────────────────
-TL_IDS = ["TL0", "TL1", "TL2"]
+TL_IDS = ["J0", "J1", "J2"]
 
 # Edge groups per junction: (ew_edges, ns_edges)
 JUNCTION_EDGES = {
-    "TL0": {
+    "J0": {
         "ew": ["W0J0", "J1J0"],   # main arterial approaches
         "ns": ["N0J0", "S0J0"],   # cross street approaches
     },
-    "TL1": {
+    "J1": {
         "ew": ["J0J1", "J2J1"],
         "ns": ["N1J1", "S1J1"],
     },
-    "TL2": {
+    "J2": {
         "ew": ["J1J2"],
         "ns": ["N2J2", "S2J2"],
     },
@@ -107,13 +107,13 @@ class RuleBasedController:
     def _apply_green_wave_offsets(self):
         """Stagger initial phases so platoons hit consecutive junctions on green."""
         try:
-            traci.trafficlight.setPhase("TL1", PHASE_EW_GREEN)
+            traci.trafficlight.setPhase("J1", PHASE_EW_GREEN)
             traci.trafficlight.setPhaseDuration(
-                "TL1", DEFAULT_EW - GREEN_WAVE_OFFSET
+                "J1", DEFAULT_EW - GREEN_WAVE_OFFSET
             )
-            traci.trafficlight.setPhase("TL2", PHASE_EW_GREEN)
+            traci.trafficlight.setPhase("J2", PHASE_EW_GREEN)
             traci.trafficlight.setPhaseDuration(
-                "TL2", DEFAULT_EW - 2 * GREEN_WAVE_OFFSET
+                "J2", DEFAULT_EW - 2 * GREEN_WAVE_OFFSET
             )
         except traci.TraCIException:
             pass
