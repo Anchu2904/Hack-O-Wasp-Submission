@@ -810,7 +810,7 @@ with tab_about:
         border-radius: 12px;
         padding: 24px;
         margin: 20px 0;
-    ">
+        ">
         <h4 style="color: {PINK}; margin-top: 0; font-family: 'Bitcount Ink', system-ui;">Key Performance Improvements</h4>
         <ul style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
             <li><strong>~31% delay reduction</strong> (Adaptive vs Fixed)</li>
@@ -818,12 +818,10 @@ with tab_about:
             <li>Better flow balance and throughput</li>
             <li>Reduced tail emissions</li>
         </ul>
-        
         <h3 style="color: {YELLOW}; font-family: 'Bitcount Ink', system-ui; margin-top: 20px;">How It Works</h3>
         <p style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
             JaamCTRL uses three distinct approaches to traffic signal control, comparing and optimizing their performance in real-time urban scenarios. Our reinforcement learning agent learns optimal policies to minimize average vehicle delay across coordinated intersections.
         </p>
-        
         <h4 style="color: {MINT}; font-family: 'Bitcount Ink', system-ui;">System Architecture:</h4>
         <ul style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
             <li>Real-time traffic simulation via SUMO (Simulation of Urban Mobility)</li>
