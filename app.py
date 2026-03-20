@@ -284,10 +284,10 @@ p, span, div, label {{ color: {WHITE}; font-family: 'Bitcount Ink', system-ui; f
     border-color: {YELLOW}40;
 }}
 [data-testid="stTabs"] [aria-selected="true"] {{
-    background-color: {YELLOW} !important;
-    color: #000000 !important;
-    border-color: {YELLOW} !important;
-    border-bottom: 2px solid {YELLOW} !important;
+    background-color: #1dc367 !important;
+    color: #1a1a1a !important;
+    border-color: #1dc367 !important;
+    border-bottom: 2px solid #1dc367 !important;
 }}
 [data-testid="stTabs"] [data-baseweb="tab-panel"] {{
     background-color: {BG_PAGE};
@@ -773,19 +773,13 @@ tab_about, tab_dash, tab_sig, tab_heat, tab_rl, tab_ctrl = st.tabs([
 with tab_about:
     
     # ── First Division: Content + Video ──────────────────────────────────────
-    st.markdown("### About This Project")
     col_content, col_video = st.columns([1, 1])
     
     with col_content:
-        st.markdown("""
-**JaamCTRL** is an AI-powered traffic signal optimization system designed to reduce congestion, delays, and environmental impact in urban corridors.
-
-#### What We Do
-- **Fixed-Time Control**: Traditional pre-programmed signals (baseline)
-- **Adaptive Control**: Queue-aware optimization with green-wave coordination
-- **RL Agent (PPO)**: Deep reinforcement learning for intelligent signal coordination across all 3 junctions
-
-        """)
+        st.markdown("### About This Project")
+        st.markdown(f"""<div style="margin-right: 24px;">
+        JaamCTRL is an AI-powered Adaptive Traffic Control System (ATCS) that ends fixed-timer frustration. We use real-time, crowd-sourced GPS data from phones and apps in vehicles to create live heatmaps of traffic density and flow — then intelligently adjust red/green timings to keep vehicles moving smoothly.
+        </div>""", unsafe_allow_html=True)
     
     with col_video:
         video_path = "assets/simulation1.mp4"
@@ -800,58 +794,51 @@ with tab_about:
                 unsafe_allow_html=True
             )
         else:
-            st.info("📹 Simulation video not found")
+            st.info("Simulation video not found")
     
-    
-    # ── Second Division ───────────────────────────────
-    st.markdown(f"""
-    <div style="
+    st.markdown(f"""<div style="
+        margin-top: 32px;
         border: 2px solid {PINK};
         border-radius: 12px;
-        padding: 24px;
-        margin: 20px 0;
-        ">
-        <h4 style="color: {PINK}; margin-top: 0; font-family: 'Bitcount Ink', system-ui;">Key Performance Improvements</h4>
-        <ul style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
-            <li><strong>~31% delay reduction</strong> (Adaptive vs Fixed)</li>
-            <li><strong>~53% delay reduction</strong> (RL Agent vs Fixed)</li>
-            <li>Better flow balance and throughput</li>
-            <li>Reduced tail emissions</li>
+        padding: 20px;
+        background-color: transparent;
+        "><h4 style="color: {PINK}; margin-top: 20px;">Our Three Approaches</h4>
+        <p style="color: {WHITE}; line-height: 1.8;">We compare and optimize three methods in realistic simulations (SUMO):</p>
+        <ul style="color: {WHITE}; line-height: 1.8;">
+            <li><strong>Fixed-Time</strong> (traditional baseline)</li>
+            <li><strong>Queue-Aware Adaptive</strong> (green-wave coordination)</li>
+            <li><strong>RL Agent (PPO)</strong> — learns to minimize average delay across coordinated junctions</li>
         </ul>
-        <h3 style="color: {YELLOW}; font-family: 'Bitcount Ink', system-ui; margin-top: 20px;">How It Works</h3>
-        <p style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
-            JaamCTRL uses three distinct approaches to traffic signal control, comparing and optimizing their performance in real-time urban scenarios. Our reinforcement learning agent learns optimal policies to minimize average vehicle delay across coordinated intersections.
-        </p>
-        <h4 style="color: {MINT}; font-family: 'Bitcount Ink', system-ui;">System Architecture:</h4>
-        <ul style="color: {WHITE}; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
-            <li>Real-time traffic simulation via SUMO (Simulation of Urban Mobility)</li>
-            <li>GPS-based congestion heatmaps and vehicle tracking</li>
-            <li>PPO (Proximal Policy Optimization) agent for adaptive control</li>
-            <li>Comparative analysis framework for benchmarking</li>
+        </div>""", unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div style="background-color: {BG_CARD}; border: 1px solid {BD_DARK}; border-radius: 8px; padding: 20px; margin: 16px 0;">
+        <h4 style="color: {YELLOW}; margin-top: 0;">Core How It Works</h4>
+        <ul style="color: {WHITE}; line-height: 1.8;">
+            <li><strong>Data Intake</strong> — Anonymized GPS probe data from vehicles and apps provides real-time vehicle positions, speeds, and patterns.</li>
+            <li><strong>Smart Processing</strong> — We generate dynamic heatmaps and run ML models (including reinforcement learning with PPO) to predict congestion and optimize signal phases.</li>
+            <li><strong>Active Control</strong> — Commands go to IoT controllers at intersections, enabling dynamic timing — green waves where needed, shorter reds during low flow.</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
     
+
     #--------------------Third Division: Poster----------------------
     # Poster placeholder
-    poster_path = os.path.join(ROOT, "assets", "poster.png")
-    if os.path.exists(poster_path):
-        st.image(poster_path, width=600)
-    else:
-        st.info("Project poster not found at assets/poster.png")
-    
-    
+    st.markdown("""<div style='margin-top:32px;margin-bottom:0px'><h3 style="margin-top: 20px;">In a nutshell</h3></div>""", unsafe_allow_html=True)
+    st.image("assets/poster.png", width='stretch',caption="Project poster with detailed architecture and results overview.")
+
     # ── Getting Started ────────────────────────────────────────────────────
-    st.markdown(f"""
+st.markdown(f"""
     <div style="
         background-color: {YELLOW};
         border-radius: 12px;
         padding: 24px;
         margin: 16px 0;
     ">
-        <h3 style="color: #1a1a1a; margin-top: 0; font-family: 'Bitcount Ink', system-ui;">Getting Started</h3>
         <ol style="color: #1a1a1a; font-family: 'Bitcount Ink', system-ui; line-height: 1.8;">
-            <li>Go to the <a href="#dashboard" style="color: #1a1a1a; font-weight: bold;"><strong>Dashboard</strong></a> tab</li>
+            <li><strong>GETTING STARTED</strong></li>
+            <li>Go to the <strong>Dashboard</strong> tab</li>
             <li>Click <strong>DIY Settings</strong> to adjust traffic parameters</li>
             <li>Click <strong>Run Fixed</strong>, <strong>Run Adaptive</strong>, or <strong>Run RL Agent</strong> buttons</li>
             <li>View results in metrics and charts</li>
@@ -864,16 +851,16 @@ with tab_about:
 
     
     # ── Tabs Overview ──────────────────────────────────────────────────────
-    st.markdown("### Tabs Overview")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("[**Dashboard**](#dashboard) — Run simulations & view results")
-        st.markdown("[**Signal View**](#signal-view) — Phase timings & coordination")
-        st.markdown("[**Heatmap**](#heatmap) — Congestion visualization")
-    with c2:
-        st.markdown("[**RL Training**](#rl-training) — Train the AI agent")
-        st.markdown("[**Controls**](#controls) — Full settings & scenarios")
-        st.markdown("[**About Us**](#about-us) — Project information")
+st.markdown("### Tabs Overview")
+c1, c2 = st.columns(2)
+with c1:
+    st.markdown("**Dashboard** — Run simulations & view results")
+    st.markdown("**Signal View** — Phase timings & coordination")
+    st.markdown("**Heatmap** — Congestion visualization")
+with c2:
+    st.markdown("**RL Training** — Train the AI agent")
+    st.markdown("**Controls** — Full settings & scenarios")
+    st.markdown("**About Us** — Project information")
     
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -881,9 +868,21 @@ with tab_about:
 # ════════════════════════════════════════════════════════════════════════════
 with tab_dash:
     st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
-    
+    st.markdown("#### RL Model Status")
+    if model_exists or st.session_state.training_done:
+        st.markdown(_badge("Model Ready", "green"), unsafe_allow_html=True)
+    log = load_training_log() if RL_OK else {}
+    if log:
+        st.caption(
+            f"Episodes: {log.get('total_episodes','?')} | "
+            f"Best reward: {log.get('best_reward',0):.3f}"
+        )
+    else:
+        st.markdown(_badge("No Model – Train First", "yellow"), unsafe_allow_html=True)
     # Settings section
     with st.expander("DIY Settings", expanded=False):
+
+
         st.markdown("**Traffic Volume** (simulations only)")
         st.session_state.traffic_scale = st.slider(
             "Multiplier", 0.5, 2.0, st.session_state.traffic_scale, 0.1,
@@ -900,8 +899,6 @@ with tab_dash:
         with col2:
             st.markdown("**Random Seed**")
             st.session_state.sim_seed = st.number_input("Seed", value=int(st.session_state.sim_seed), step=1, key="seed_dashboard")
-        
-        st.info("See **DIY** tab for detailed settings and model info.")
     
     st.markdown("### Run Simulations")
     rc1, rc2, rc3 = st.columns(3)
@@ -1290,6 +1287,7 @@ with tab_rl:
 | Min phase | 15 s |
 | Max phase | 60 s |
 """)
+        
     with ri2:
         st.code("""
 Observation (18-dim = 6 × 3 junctions)
@@ -1361,46 +1359,16 @@ R = + 1.0 × tanh( (delay_before - delay_after) / delay_before )  # delay reduct
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# TAB 5  WHAT-IF
+# TAB 5  EXPLORE MORE
 # ════════════════════════════════════════════════════════════════════════════
 with tab_ctrl:
-    st.markdown("### Controls & Scenarios")
-    
-    st.markdown("#### Simulation Parameters")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.session_state.traffic_scale = st.slider(
-            "Traffic Volume", 0.5, 2.0, st.session_state.traffic_scale, 0.1,
-            help="Multiplier on all vehicle flows",
-        )
-    with c2:
-        st.session_state.accident_step = st.slider(
-            "Inject Accident (s)", -1, 1700, st.session_state.accident_step, 50,
-            help="-1 = no accident injected",
-        )
-    with c3:
-        st.session_state.sim_seed = st.number_input("Seed", value=int(st.session_state.sim_seed), step=1, key="seed_controls")
-
-    st.markdown("#### RL Model Status")
-    if model_exists or st.session_state.training_done:
-        st.markdown(_badge("Model Ready", "green"), unsafe_allow_html=True)
-        log = load_training_log() if RL_OK else {}
-        if log:
-            st.caption(
-                f"Episodes: {log.get('total_episodes','?')} | "
-                f"Best reward: {log.get('best_reward',0):.3f}"
-            )
-    else:
-        st.markdown(_badge("No Model – Train First", "yellow"), unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("### What-If Scenario Explorer")
+    st.markdown("### EXPLORE MORE: What-If Scenarios")
     rng = np.random.default_rng(7)
 
     wc1, wc2 = st.columns(2)
     with wc1:
         st.markdown("**Avg Delay vs Traffic Volume**")
-        vols  = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+        vols = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
         wi_df = pd.DataFrame({
             "Fixed":    [55 + v*18 + rng.uniform(-2,2) for v in vols],
             "Adaptive": [35 + v*10 + rng.uniform(-2,2) for v in vols],
