@@ -226,7 +226,10 @@ def _sumo_result(mode, traffic_scale, accident_step, seed,
 
     src_dir  = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(src_dir)
-    cfg_path = os.path.join(root_dir, "sumo", "corridor.sumocfg")
+    # Prefer the current config filename, but keep backward compatibility.
+    cfg_path = os.path.join(root_dir, "sumo", "config.sumocfg")
+    if not os.path.exists(cfg_path):
+        cfg_path = os.path.join(root_dir, "sumo", "corridor.sumocfg")
 
     if not os.path.exists(cfg_path):
         return _mock_result(mode, baseline_delay, traffic_scale, accident_step, seed)

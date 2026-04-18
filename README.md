@@ -1,7 +1,7 @@
 # JaamCTRL
 
 > **AI Adaptive Traffic Signal Optimizer** for Indian Urban Corridors
-> KodeMaster.ai Hackathon 2026 – Open Innovation Track (Team:BRAT)
+> Hack-O-Wasp 2026 – Open Innovation Track (Team: CUPCAKES)
 
 ---
 
@@ -44,9 +44,9 @@ jaamctrl/
 │   ├── gps_generator.py      # Synthetic GPS probe generator
 │   └── heatmap.py            # Folium neon heatmap builder
 ├── sumo/
-│   ├── corridor.net.xml      # 3-intersection network (SUMO format)
-│   ├── corridor.rou.xml      # Indian traffic mix (60% 2-wheelers)
-│   └── corridor.sumocfg      # SUMO config
+│   ├── network.net.xml       # 3-intersection network (SUMO format)
+│   ├── routes.rou.xml        # Indian traffic mix (60% 2-wheelers)
+│   └── config.sumocfg        # SUMO config
 ├── models/                   # Saved PPO models
 └── assets/                   # Screenshots / GIFs for README
 ```
@@ -79,10 +79,16 @@ export PYTHONPATH=$SUMO_HOME/tools:$PYTHONPATH
 ### 2. Clone & install Python dependencies
 
 ```bash
-git clone https://github.com/<your-team>/jaam-ctrl.git
-cd jaam-ctrl
+git clone https://github.com/Anchu2904/JaamCTRL.git
+cd JaamCTRL
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+If you installed SUMO through pip (`eclipse-sumo`) instead of Homebrew/system packages:
+```bash
+export SUMO_HOME="$PWD/.venv/lib/python$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages/sumo"
+export PYTHONPATH="$SUMO_HOME/tools:$PYTHONPATH"
 ```
 
 ### 3. Launch the dashboard
@@ -131,7 +137,7 @@ Open http://localhost:8501 in your browser.
 
 ## Team
 
-*BRAT – Build with KodeMaster.ai Hackathon 2026*
+*Cupcakes – Hack-O-Wasp 8.0 2026*
 
 ---
 
